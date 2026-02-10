@@ -28,6 +28,10 @@ def fetch_yahoo(symbol: str, start:str, end: str, cfg: YahooConfig = YahooConfig
                      auto_adjust=cfg.auto_adjust,
                      progress=False)
     
+    # flatten yfinance multiindex columns (single symbol case)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [c[0] for c in df.columns]
+    
     if df.empty:
         raise ValueError(f"No data found for {symbol}. Check symbol and date range.")
     
