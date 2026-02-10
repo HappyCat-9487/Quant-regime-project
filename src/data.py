@@ -19,6 +19,11 @@ def fetch_yahoo(symbol: str, start:str, end: str, cfg: YahooConfig = YahooConfig
     if cache_path.exists():
         df = pd.read_parquet(cache_path)
         df.index = pd.to_datetime(df.index)
+        
+        # flatten yfinance multiindex columns (single symbol case)
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = [c[0] for c in df.columns]
+        
         return df
     
     df = yf.download(symbol, 
