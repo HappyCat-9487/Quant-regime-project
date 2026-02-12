@@ -40,3 +40,14 @@ def add_vol_regime(df: pd.DataFrame, vol_window: int = 20, q: float = 0.7) -> pd
     out["vol"] = vol
     out["high_vol"] = (vol > thresh).astype(int)
     return out
+
+def build_mom_features(df: pd.DataFrame, lookback: int) -> pd.DataFrame:
+    
+    out = add_returns(df)
+    out = add_momentum_signal(out, lookback=lookback)
+    return out
+
+def build_mr_features(df: pd.DataFrame, z_window: int) -> pd.DataFrame:
+    out = add_returns(df)
+    out = add_mean_reversion_signal(out, z_window=z_window)
+    return out
