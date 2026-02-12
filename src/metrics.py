@@ -23,3 +23,9 @@ def summary(bt: pd.DataFrame) -> dict:
         "AnnRet(approx)": float(eq.iloc[-1] ** (252 / len(eq)) - 1.0 if len(eq) > 0 else 0.0),
         "AvgTurnover": float(bt["turnover"].mean()),
     }
+    
+def regime_summary(bt: pd.DataFrame, regime_col: str = "high_vol") -> dict:
+    out = {}
+    for k, sub in bt.dropna(subset=["strat_ret"]).groupby(regime_col):
+        out[f"regime={k}"] = summary(sub)
+    return out
