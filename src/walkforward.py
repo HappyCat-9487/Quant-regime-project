@@ -46,3 +46,54 @@ def walkforward_select_param(
       - evaluate chosen param on test window
     Returns a table of window results and an out-of-sample equity curve.
     """
+    df = df.copy().dropna()
+    windows = _year_slices(df.index, cfg.train_years, cfg.test_years)
+    
+    rows = []
+    oos_parts = []
+    
+    for(tr_s, tr_e, te_s, te_e) in windows:
+        tr = df.loc[tr_s:tr_e]
+        te = df.loc[te_s:te_e]
+        if len(tr) < 252 or len(te) < 100:
+            continue
+        
+        best_score = -np.inf
+        best_para = None
+        
+        for para in para_grid:
+            dff = build_features(df, para)
+            bt = backtest_from_signal(dff, signal=signal_col, fee_bps=cfg.fee_bps)
+            bt_tr = bt.loc[tr_s:tr_e].dropna(subset=["strat_ret"])
+            score = sharpe(bt_tr["strat_ret"], periods=cfg.periods_per_year)
+            if score > best_score:
+                best_score = score
+                best_para = para
+                
+        # evaluate on test with best_param
+        dff_best = build_features(df, best_para)
+        bt_best = backtest_from_signal(dff_best, signal_col=signal_col, fee_bps=cfg.fee_bps)
+        bt_te = bt_best.loc[te_s:te_e].dropna(subset=["strat_ret"]).copy()
+        
+        # Store OOS piece
+        oos_parts.append(bt_te["strat_ret"])
+        
+        rows.append({
+            "train_start": tr_s.date(),
+            "train_end": tr_e.date(),
+            "test_start": te_s.date(),
+            "test_end": te_e.date(),
+            "best_para": best_para,
+            "train_sharpe": float(best_score),
+            "test_sharpe": float(sharpe(bt_te["strat_ret"], periods=cfg.periods_per_year)),
+            "test_total_return": float((1+ bt_te["strat_ret"]).prod() - 1),
+        })
+    
+    res = pd.DataFrame(rows)
+    if oos_parts:
+        oos = pd.concat(oos_parts).sort_index()
+        oos["oos_equity"] = (1.0 + oos["strat_ret"].fillna(0.0)).cumprod()
+    else:
+        oos = pd.DataFrame(columns=["strat_ret", "oos_equity"])
+        
+    return res, oos
