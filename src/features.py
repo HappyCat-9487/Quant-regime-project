@@ -42,7 +42,6 @@ def add_vol_regime(df: pd.DataFrame, vol_window: int = 20, q: float = 0.7) -> pd
     return out
 
 def build_mom_features(df: pd.DataFrame, lookback: int) -> pd.DataFrame:
-    
     out = add_returns(df)
     out = add_momentum_signal(out, lookback=lookback)
     return out

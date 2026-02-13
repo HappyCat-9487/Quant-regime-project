@@ -2,7 +2,7 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from src.backtest import backtest_from_signal
 from src.metrics import sharpe
@@ -38,7 +38,7 @@ def walkforward_select_param(
     build_features: Callable[[pd.DataFrame, int], pd.DataFrame],
     signal_col: str,
     para_grid: List[int],
-    cfg: WalkForwardConfig = WalkForwardConfig()) -> pd.DataFrame:
+    cfg: Optional[WalkForwardConfig] = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     For each WF window:
       - build features on full df for each param (safe here since features use rolling past values)
@@ -46,6 +46,9 @@ def walkforward_select_param(
       - evaluate chosen param on test window
     Returns a table of window results and an out-of-sample equity curve.
     """
+    if cfg is None:
+        cfg = WalkForwardConfig(train_years=5, test_years=1, fee_bps=1.0)
+
     df = df.copy().dropna()
     windows = _year_slices(df.index, cfg.train_years, cfg.test_years)
     
@@ -63,7 +66,7 @@ def walkforward_select_param(
         
         for para in para_grid:
             dff = build_features(df, para)
-            bt = backtest_from_signal(dff, signal=signal_col, fee_bps=cfg.fee_bps)
+            bt = backtest_from_signal(dff, signal_col=signal_col, fee_bps=cfg.fee_bps)
             bt_tr = bt.loc[tr_s:tr_e].dropna(subset=["strat_ret"])
             score = sharpe(bt_tr["strat_ret"], periods=cfg.periods_per_year)
             if score > best_score:
@@ -91,7 +94,7 @@ def walkforward_select_param(
     
     res = pd.DataFrame(rows)
     if oos_parts:
-        oos = pd.concat(oos_parts).sort_index()
+        oos = pd.concat(oos_parts).sort_index().to_frame(name="strat_ret")
         oos["oos_equity"] = (1.0 + oos["strat_ret"].fillna(0.0)).cumprod()
     else:
         oos = pd.DataFrame(columns=["strat_ret", "oos_equity"])
