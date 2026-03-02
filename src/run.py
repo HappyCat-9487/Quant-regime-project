@@ -142,8 +142,8 @@ def run_symbol(symbol: str, cfg: Config):
 #---W&B logging---#
 def wandb_init_and_log(config_dict: dict, metrics_df: pd.DataFrame, image_paths: list[Path]):
     import wandb
-    run = wandb.init(project=config_dict.get("wandb_project", "quant-regime-project", 
-                                             config={k:v for k,v in config_dict.items() if k not in ["wandb_project"]}))
+    run = wandb.init(project=config_dict.get("wandb_project", "quant-regime-project"), 
+                                             config={k:v for k,v in config_dict.items() if k not in ["wandb_project"]})
     
     #log table and images
     wandb.log({"metrics_table": wandb.Table(dataframe=metrics_df)})
