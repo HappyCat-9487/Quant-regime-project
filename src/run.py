@@ -59,13 +59,13 @@ class Config:
     mr_window: int = 20
     vol_window: int = 20
     vol_q: float = 0.7
-    regime_active_value: int = 0 # trade when high_vol==0 (low vol)
+    regime_active: int = 0 # trade when high_vol==0 (low vol)
     
 def prepare(symbol: str, cfg: Config) -> pd.DataFrame:
     df = fetch_yahoo(symbol, cfg.start, cfg.end)
     df = add_returns(df)
     df = add_momentum_signal(df, lookback=cfg.mom_lookback)
-    df = add_momentum_signal(df, z_window=cfg.mr_window)
+    df = add_mean_reversion_signal(df, z_window=cfg.mr_window)
     df = add_vol_regime(df, vol_window=cfg.vol_window, q=cfg.vol_q)
     return df.dropna()
 
@@ -107,7 +107,7 @@ def run_symbol(symbol: str, cfg: Config):
     mr_bt = backtest_long_only(df, "signal_mr", fee_bps=cfg.fee_bps)
     mrf_bt = backtest_long_only_with_regime(
         df, "signal_mr", "high_vol", 
-        regime_active_value=cfg.regime_active_value,
+        regime_active=cfg.regime_active,
         fee_bps=cfg.fee_bps
     )
     
@@ -163,7 +163,7 @@ def parse_args():
     parser.add_argument("--mr_window", type=int, default=20, help="Mean reversion window")
     parser.add_argument("--vol_window", type=int, default=20, help="Volatility window")
     parser.add_argument("--vol_q", type=float, default=0.7, help="Volatility quantile")
-    parser.add_argument("--regime_active_value", type=int, default=0, help="Regime active value")
+    parser.add_argument("--regime_active", type=int, default=0, help="Regime active value")
     
     parser.add_argument("--outdir", default="reports/figures")
     parser.add_argument("--use_wandb", action="store_true", help="Use W&B for logging")
@@ -181,11 +181,11 @@ def main():
         mr_window=args.mr_window,
         vol_window=args.vol_window,
         vol_q=args.vol_q,
-        regime_active_value=args.regime_active_value
+        regime_active=args.regime_active
     )
     
     outdir = Path(args.outdir)
-    os.mkdir(parents=True, exist_ok=True)
+    outdir.mkdir(parents=True, exist_ok=True)
     
     all_tables = []
     images = []
