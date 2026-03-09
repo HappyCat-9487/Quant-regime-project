@@ -22,7 +22,8 @@ def drawdown_from_equity(eq: pd.Series) -> pd.Series:
     return (eq - peak) - 1.0
 
 def perf_metrics(strat_ret: pd.Series, periods: int = 252):
-    r = strat_ret.dropna()
+    r = strat_ret.copy()
+    r = r.replace([np.inf, -np.inf], np.nan).fillna(0.0)
     eq = equity_from_returns(r)
     T = len(r)
     if T == 0:
