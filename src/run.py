@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 import pandas as pd
 import numpy as np
-
 import matplotlib.pyplot as plt
 
 from src.data import fetch_yahoo
@@ -19,7 +18,7 @@ def equity_from_returns(r: pd.Series) -> pd.Series:
 
 def drawdown_from_equity(eq: pd.Series) -> pd.Series:
     peak = eq.cummax()
-    return (eq - peak) - 1.0
+    return (eq / peak) - 1.0
 
 def perf_metrics(strat_ret: pd.Series, periods: int = 252):
     r = strat_ret.copy()

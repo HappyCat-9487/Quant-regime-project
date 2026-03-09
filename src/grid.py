@@ -7,13 +7,15 @@ from src.run import Config, run_symbol #reuse existing logic
 
 def grid_search(
     symbols: list[str],
-    base_cfg: Config,
+    base_cfg,
     grid: dict[str, list],
 ) -> pd.DataFrame:
     """
     grid keys can include: mom_lookback, mr_window, vol_q, fee_bps, vol_window, regime_active_value
     returns a dataframe of results for all combinations and symbols.
     """
+    from src.run import Config, run_symbol
+    
     keys = list(grid.keys())
     combos = list(itertools.product(*[grid[k] for k in keys]))
     
