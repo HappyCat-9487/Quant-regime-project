@@ -141,6 +141,10 @@ python -m src.run --symbols SPY 2330.TW --fee_bps 1.0
 ```bash
 python -m src.run --symbols SPY 2330.TW --fee_bps 1.0 --use_wandb --wandb_project quant-regime-project
 ```
+---
+
+## Repository Structure
+
 ```text
 quant-regime-project
 ├── LICENSE
@@ -169,10 +173,8 @@ quant-regime-project
 ```
 ---
 
-##Notes / Limitations
+## Notes / Limitations
 
-Daily data and simple execution assumptions; not modeling intraday microstructure, slippage beyond turnover-based bps, or market impact.
+- Daily data and simple execution assumptions; not modeling intraday microstructure, slippage beyond turnover-based bps, or market impact.
 
-Results are research-oriented; performance may change with data quality, execution assumptions, and regime definitions.
-
----
+- Results are research-oriented; performance may change with data quality, execution assumptions, and regime definitions.
