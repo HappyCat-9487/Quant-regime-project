@@ -1,6 +1,7 @@
 from __future__ import annotations
 import argparse
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 import pandas as pd
@@ -11,6 +12,21 @@ from src.data import fetch_yahoo
 from src.features import add_returns, add_mean_reversion_signal, add_momentum_signal, add_vol_regime
 from src.backtest import backtest_long_only, backtest_long_only_with_regime
 from src.metrics import summary, regime_summary
+
+#--- Figure saving helper ---#
+def save_figure(filename: str, assets_dir: Path, reports_dir: Path | None = None, dpi: int = 250) -> Path:
+    """Save the current matplotlib figure to assets_dir.
+    If reports_dir is provided, also copy the file there.
+    Returns the path saved in assets_dir.
+    """
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    out = assets_dir / filename
+    plt.savefig(out, dpi=dpi)
+    if reports_dir is not None:
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(out, reports_dir / filename)
+    return out
+
 
 #--- Metrics utilities ---#
 def equity_from_returns(r: pd.Series) -> pd.Series:
@@ -69,9 +85,14 @@ def prepare(symbol: str, cfg: Config) -> pd.DataFrame:
     df = add_vol_regime(df, vol_window=cfg.vol_window, q=cfg.vol_q)
     return df.dropna()
 
-def plot_and_save(symbol: str, cfg: Config, outdir: Path, eq_map: dict, dd_map: dict):
-    outdir.mkdir(parents=True, exist_ok=True)
-    
+def plot_and_save(
+    symbol: str,
+    cfg: Config,
+    assets_dir: Path,
+    eq_map: dict,
+    dd_map: dict,
+    reports_dir: Path | None = None,
+):
     #Equity plot
     plt.figure()
     for name, series in eq_map.items():
@@ -79,19 +100,17 @@ def plot_and_save(symbol: str, cfg: Config, outdir: Path, eq_map: dict, dd_map: 
     plt.title(f"Equity: {symbol} (fees: {cfg.fee_bps}bps)")
     plt.legend()
     plt.tight_layout()
-    eq_path = outdir / f"{symbol}_equity.png"
-    plt.savefig(eq_path, dpi=250)
+    eq_path = save_figure(f"{symbol}_equity.png", assets_dir, reports_dir)
     plt.close()
-    
-    #Dropdown plot
+
+    #Drawdown plot
     plt.figure()
     for name, series in dd_map.items():
         series.plot(label=name)
     plt.title(f"Drawdown: {symbol}")
     plt.legend()
     plt.tight_layout()
-    dd_path = outdir / f"{symbol}_drawdown.png"
-    plt.savefig(dd_path, dpi=250)
+    dd_path = save_figure(f"{symbol}_drawdown.png", assets_dir, reports_dir)
     plt.close()
 
     return eq_path, dd_path
@@ -165,7 +184,10 @@ def parse_args():
     parser.add_argument("--vol_q", type=float, default=0.7, help="Volatility quantile")
     parser.add_argument("--regime_active", type=int, default=0, help="Regime active value")
     
-    parser.add_argument("--outdir", default="reports/figures")
+    parser.add_argument("--assets_dir", default="assets", help="Directory for presentation-grade figures")
+    parser.add_argument("--reports_dir", default="reports/figures", help="Directory for full report artifacts")
+    parser.add_argument("--also_save_reports", action="store_true",
+                        help="Also copy figures to --reports_dir in addition to --assets_dir")
     parser.add_argument("--use_wandb", action="store_true", help="Use W&B for logging")
     parser.add_argument("--wandb_project", default="quant-regime-project", help="W&B project name")
     return parser.parse_args()
@@ -184,16 +206,16 @@ def main():
         regime_active=args.regime_active
     )
     
-    outdir = Path(args.outdir)
-    outdir.mkdir(parents=True, exist_ok=True)
-    
+    assets_dir = Path(args.assets_dir)
+    reports_dir = Path(args.reports_dir) if args.also_save_reports else None
+
     all_tables = []
     images = []
-    
+
     for sym in args.symbols:
         table, eq_map, dd_map = run_symbol(sym, cfg)
         all_tables.append(table)
-        eq_path, dd_path = plot_and_save(sym, cfg, outdir, eq_map, dd_map)
+        eq_path, dd_path = plot_and_save(sym, cfg, assets_dir, eq_map, dd_map, reports_dir)
         images.extend([eq_path, dd_path])
     
     report = pd.concat(all_tables, ignore_index=True)
